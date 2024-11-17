@@ -14,11 +14,19 @@ export default function Home() {
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [gameOver, setGameOver] = useState(false);
+  const [guessedImages, setGuessedImages] = useState<string[]>([]);
 
-  const fetchRandomImage = async () => {
+  const fetchRandomImage = async (guessedImagesParam?: string[]) => {
     try {
-      const response = await fetch('/api/images');
+      const guessedImagesQuery = guessedImagesParam?.join(',') || guessedImages.join(',');
+      const response = await fetch(`/api/images?guessed=${guessedImagesQuery}`);
       const imageData = await response.json();
+
+      if (imageData.gameOver) {
+        setGameOver(true);
+        return;
+      }
+
       setCurrentImage(imageData);
     } catch (error) {
       console.error('Failed to fetch image:', error);
@@ -35,9 +43,11 @@ export default function Home() {
 
     const imageName = currentImage.solution;
     if (guess.toLowerCase() === imageName.toLowerCase()) {
+      const newGuessedImages = [...guessedImages, currentImage.filename];
+      setGuessedImages(newGuessedImages);
       setScore(score + 1);
       setFeedback('Correct!');
-      fetchRandomImage();
+      fetchRandomImage(newGuessedImages);
     } else {
       setFeedback('Incorrect, try again!');
     }
@@ -47,8 +57,26 @@ export default function Home() {
     setScore(0);
     setFeedback('');
     setGameOver(false);
-    fetchRandomImage();
+    setGuessedImages([]);
+    fetchRandomImage([]);
   };
+
+  if (gameOver) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <h1 className="text-3xl font-bold mb-4 text-gray-900">Game Over!</h1>
+          <p className="text-xl mb-4 text-gray-800">Your final score: {score}</p>
+          <button 
+            onClick={resetGame} 
+            className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition"
+          >
+            Play Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentImage) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
